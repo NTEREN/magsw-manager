@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <!-- 引入刚刚下载的 ECharts 文件 -->
+    <script src="echarts.min.js"></script>
+    <button type="button" onclick=addpoint()>添加新点</button>
+</head>
+<div id="main" style="width: 600px;height:400px;"></div>
+
+
+<script>
+    var chartDom = document.getElementById('main');
+    var myChart = echarts.init(chartDom);
+    var option;
+
+    const deft = [2.1, 0.6];
+    const symbolSize = 20;
+    var data = [
+        [0, 0.1],
+        [1, 0.3],
+        [1.5, 0.25],
+        [2, 0.5],
+        [3, 0.7],
+        [3.5, 0.75],
+        [4, 0.8]
+    ];
+
+    function fix() {
+        for (i = 1; i < data.length; i++) {
+            if (Math.round(data[i][0] * 100) == Math.round(data[i - 1][0] * 100)) {
+                data[i][0] += 0.01;
+            }
+        }
+        for (i = 0; i < data.length; i++) {
+            if (data[i][0] >= 4.23) data[i][0] = 4.2;
+            if (data[i][1] >= 1.23) data[i][1] = 1.2;
+            if (data[i][0] <= 0.06) data[i][0] = 0.1;
+            if (data[i][1] <= 0.06) data[i][1] = 0.1;
+        }
+    }
+
+    function addpoint() {
+        data.push([2.2 + ((-1) ** data.length) * parseInt(data.length / 2) * 0.01, 0.5]);
+        data.sort();
+        fix();
+        init();
+    }
+
+    function init() {
+        setTimeout(function() {
+            // Add shadow circles (which is not visible) to enable drag.
+            myChart.setOption({
+                graphic: data.map(function(item, dataIndex) {
+                    return {
+                        type: 'circle',
+                        position: myChart.convertToPixel('grid', item),
+                        shape: {
+                            cx: 0,
+                            cy: 0,
+                            r: symbolSize / 2
+                        },
+                        invisible: true,
+                        draggable: true,
+                        ondrag: function(dx, dy) {
+                            onPointDragging(dataIndex, [(this.x), this.y]);
+                        },
+                        onmousemove: function() {
+                            showTooltip(dataIndex);
+                        },
+                        onmouseout: function() {
+                            hideTooltip(dataIndex);
+                        },
+                        onmouseup: function() {
+                            data.sort();
+                            fix();
+                            init();
+                        },
+                        z: 100
+                    };
+                })
+            });
+        }, 0);
+        window.addEventListener('resize', updatePosition);
+        myChart.on('dataZoom', updatePosition);
+        option && myChart.setOption(option);
+    }
+    option = {
+        title: {
+            text: '按压深度与反馈力度控制曲线图',
+            left: 'center'
+        },
+        tooltip: {
+            triggerOn: 'none',
+            formatter: function(params) {
+                return (
+                    '按压深度(mm): ' +
+                    params.data[0].toFixed(2) +
+                    '<br>反馈力度(N): ' +
+                    params.data[1].toFixed(2)
+                );
+            }
+        },
+        grid: {
+            top: '8%',
+            bottom: '12%'
+        },
+        xAxis: {
+            min: 0,
+            max: 4.25,
+            type: 'value',
+            axisLine: {
+                onZero: false
+            }
+        },
+        yAxis: {
+            min: 0,
+            max: 1.25,
+            type: 'value',
+            axisLine: {
+                onZero: false
+            }
+        },
+        dataZoom: [{
+            type: 'slider',
+            xAxisIndex: 0,
+            filterMode: 'none'
+        }, {
+            type: 'slider',
+            yAxisIndex: 0,
+            filterMode: 'none'
+        }, {
+            type: 'inside',
+            xAxisIndex: 0,
+            filterMode: 'none'
+        }, {
+            type: 'inside',
+            yAxisIndex: 0,
+            filterMode: 'none'
+        }],
+        series: [{
+            id: 'a',
+            type: 'line',
+            smooth: true,
+            symbolSize: symbolSize,
+            data: data
+        }]
+    };
+
+
+    function updatePosition() {
+        myChart.setOption({
+            graphic: data.map(function(item, dataIndex) {
+                return {
+                    position: myChart.convertToPixel('grid', item)
+                };
+            })
+        });
+    }
+
+    function showTooltip(dataIndex) {
+        myChart.dispatchAction({
+            type: 'showTip',
+            seriesIndex: 0,
+            dataIndex: dataIndex
+        });
+    }
+
+    function hideTooltip(dataIndex) {
+        myChart.dispatchAction({
+            type: 'hideTip'
+        });
+    }
+
+    function onPointDragging(dataIndex, pos) {
+        data[dataIndex] = myChart.convertFromPixel('grid', pos);
+        if (data[dataIndex][0] >= 4.23) data[dataIndex][0] = 4.2;
+        if (data[dataIndex][1] >= 1.23) data[dataIndex][1] = 1.2;
+        if (data[dataIndex][0] <= 0.06) data[dataIndex][0] = 0.1;
+        if (data[dataIndex][1] <= 0.06) data[dataIndex][1] = 0.1;
+        init();
+    }
+
+    init();
+</script>
+
+</html>
